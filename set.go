@@ -2,8 +2,8 @@ package logger
 
 import (
 	"fmt"
+	"github.com/gobkc/logger/driver"
 	"log"
-	"logger/logger/driver"
 )
 
 func Set(logType interface{}) {
@@ -15,6 +15,12 @@ func Set(logType interface{}) {
 		log.SetOutput(&to)
 	case "driver.Syslog":
 		var to = logType.(driver.Syslog)
+		log.SetFlags(0)
 		log.SetOutput(&to)
+	case "driver.FileLog":
+		var to = logType.(driver.FileLog)
+		log.SetFlags(0)
+		var file = to.InitFileLog()
+		log.SetOutput(file)
 	}
 }
