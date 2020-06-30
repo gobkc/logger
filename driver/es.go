@@ -67,7 +67,7 @@ func (e *ElasticSearch) Write(p []byte) (n int, err error) {
 			response.Body.Close()
 		}
 	}()
-	if response != nil || response.Body != nil {
+	if response == nil || response.Body == nil {
 		return 0, errors.New("elasticsearch host error")
 	}
 	var body []byte
