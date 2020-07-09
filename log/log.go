@@ -2,6 +2,7 @@ package log
 
 import (
 	"log"
+	"time"
 )
 
 type EsDefault struct {
@@ -37,6 +38,7 @@ func Danger(v interface{}) {
 	log.Println(esData)
 }
 
+//
 func Warn(v interface{}) {
 	var esData = EsDefault{
 		Message: v,
