@@ -43,6 +43,7 @@ func (e *ElasticSearch) Write(p []byte) (n int, err error) {
 			return 0, err
 		}
 	}
+
 	//处理basic auth
 	var eType = fmt.Sprintf("%s:%s", e.User, e.Password)
 	var esEncode = base64.StdEncoding.EncodeToString([]byte(eType))
@@ -53,6 +54,44 @@ func (e *ElasticSearch) Write(p []byte) (n int, err error) {
 		actMethod = "https"
 	}
 	var api = fmt.Sprintf("%s://%s:%d/%s/_doc", actMethod, e.Host, e.Port, e.Index)
+	var request = new(http.Request)
+	request, err = http.NewRequest("POST", api, param)
+	if err != nil {
+		return n, err
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("Authorization", auth)
+	var response = new(http.Response)
+	response, err = http.DefaultClient.Do(request)
+	defer func() {
+		if response != nil && response.Body != nil {
+			response.Body.Close()
+		}
+	}()
+	if response == nil || response.Body == nil {
+		return 0, errors.New("elasticsearch host error")
+	}
+	var body []byte
+	body, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		return n, err
+	}
+	var noError = err
+	return len(body), noError
+}
+
+// OutPut根据数据和index输出到elasticsearch
+func (e *ElasticSearch) OutPut(index string, p []byte) (n int, err error) {
+	var eType = fmt.Sprintf("%s:%s", e.User, e.Password)
+	var esEncode = base64.StdEncoding.EncodeToString([]byte(eType))
+	var auth = fmt.Sprintf("Basic %s", esEncode)
+	var param = bytes.NewReader(p)
+	var actMethod = "http"
+	if e.Https {
+		actMethod = "https"
+	}
+
+	var api = fmt.Sprintf("%s://%s:%d/%s/_doc", actMethod, e.Host, e.Port, index)
 	var request = new(http.Request)
 	request, err = http.NewRequest("POST", api, param)
 	if err != nil {
