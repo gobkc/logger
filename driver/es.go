@@ -17,7 +17,7 @@ type ElasticSearch struct {
 	Port     int
 	User     string //basic auth 如果没有账号密码请留空
 	Password string //basic auth
-	Index    string
+	index    string
 	Https    bool
 }
 
@@ -26,6 +26,10 @@ type EsDefault struct {
 	Time    string `json:"time"`
 	Message string `json:"message"`
 	Level   string `json:"level"`
+}
+
+func (e *ElasticSearch) SetIndex(index string) {
+	e.index = index
 }
 
 //驱动
@@ -43,7 +47,7 @@ func (e *ElasticSearch) Write(p []byte) (n int, err error) {
 			return 0, err
 		}
 	}
-
+	fmt.Println("Write:", string(p))
 	//处理basic auth
 	var eType = fmt.Sprintf("%s:%s", e.User, e.Password)
 	var esEncode = base64.StdEncoding.EncodeToString([]byte(eType))
@@ -53,7 +57,7 @@ func (e *ElasticSearch) Write(p []byte) (n int, err error) {
 	if e.Https {
 		actMethod = "https"
 	}
-	var api = fmt.Sprintf("%s://%s:%d/%s/_doc", actMethod, e.Host, e.Port, e.Index)
+	var api = fmt.Sprintf("%s://%s:%d/%s/_doc", actMethod, e.Host, e.Port, e.index)
 	var request = new(http.Request)
 	request, err = http.NewRequest("POST", api, param)
 	if err != nil {
@@ -81,7 +85,7 @@ func (e *ElasticSearch) Write(p []byte) (n int, err error) {
 }
 
 // OutPut根据数据和index输出到elasticsearch
-func (e *ElasticSearch) OutPut(index string, p []byte) (n int, err error) {
+func (e *ElasticSearch) OutPut(p []byte) (n int, err error) {
 	var eType = fmt.Sprintf("%s:%s", e.User, e.Password)
 	var esEncode = base64.StdEncoding.EncodeToString([]byte(eType))
 	var auth = fmt.Sprintf("Basic %s", esEncode)
@@ -90,8 +94,8 @@ func (e *ElasticSearch) OutPut(index string, p []byte) (n int, err error) {
 	if e.Https {
 		actMethod = "https"
 	}
-
-	var api = fmt.Sprintf("%s://%s:%d/%s/_doc", actMethod, e.Host, e.Port, index)
+	fmt.Println("output", string(p))
+	var api = fmt.Sprintf("%s://%s:%d/%s/_doc", actMethod, e.Host, e.Port, e.index)
 	var request = new(http.Request)
 	request, err = http.NewRequest("POST", api, param)
 	if err != nil {

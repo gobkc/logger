@@ -6,12 +6,15 @@ import (
 	"log"
 	"reflect"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 var logOprDefault logOperator
 
 type OutPuter interface {
-	OutPut(index string, p []byte) (n int, err error)
+	OutPut(p []byte) (n int, err error)
+	SetIndex(index string)
 }
 
 type EsHeader struct {
@@ -30,6 +33,10 @@ func SetOut(o OutPuter) {
 
 func SetPrefix(index string) *logOperator {
 	logOprDefault.Index = index
+	if logOprDefault.output == nil {
+		panic("didn't set ouput object")
+	}
+	logOprDefault.output.SetIndex(index)
 	return &logOprDefault
 }
 
@@ -39,9 +46,21 @@ func createCombinationStru(v interface{}, add interface{}) (t reflect.Type) {
 	typ2 := reflect.TypeOf(add)
 
 	for i := 0; i < typ1.NumField(); i++ {
+		// discard lowercase field
+		r, _ := utf8.DecodeRuneInString(typ1.Field(i).Name)
+		if unicode.IsLower(r) {
+			//fmt.Printf("%v, %v, %c\n", typ1.Field(i).Name, "islower:", r)
+			continue
+		}
 		fieldSlice = append(fieldSlice, typ1.Field(i))
 	}
 	for i := 0; i < typ2.NumField(); i++ {
+		// discard lowercase field
+		r, _ := utf8.DecodeRuneInString(typ2.Field(i).Name)
+		if unicode.IsLower(r) {
+			//fmt.Println(typ2.Field(i).Name, "islower:", r)
+			continue
+		}
 		fieldSlice = append(fieldSlice, typ2.Field(i))
 	}
 	return reflect.StructOf(fieldSlice)
@@ -149,7 +168,7 @@ func (l *logOperator) out(level string, v interface{}) {
 
 	// marshal it
 	data, _ := json.Marshal(newStInstance.Elem().Interface())
-	l.output.OutPut(l.Index, data)
+	l.output.OutPut(data)
 }
 
 // Error output info log
@@ -185,11 +204,11 @@ func Error(v interface{}) {
 }
 
 func Danger(v interface{}) {
-	logOprDefault.Error(v)
+	logOprDefault.Danger(v)
 }
 
 func Warn(v interface{}) {
-	logOprDefault.Error(v)
+	logOprDefault.Warn(v)
 }
 
 func Println(v interface{}) {
