@@ -67,74 +67,88 @@ func createCombinationStru(v interface{}, add interface{}) (t reflect.Type) {
 }
 
 // copyDataToNewStru copy struct data to a struct
-// newStInstance should be a pointer  value
-func copyDataToNewStru(newStInstance interface{}, v interface{}) {
-	rSrcValue := reflect.ValueOf(v)
+// dest : 目标结构的指针的接口
+// src  : 源结构的接口
+func copyDataToNewStru(dest interface{}, src interface{}) {
+	rSrcValue := reflect.ValueOf(src)
 	rSrcTyp := rSrcValue.Type()
-	rInstance := reflect.ValueOf(newStInstance)
+	rDestValue := reflect.ValueOf(dest)
 
-	if rInstance.Kind() != reflect.Ptr {
+	if rDestValue.Kind() != reflect.Ptr {
 		return
 	}
-	rInstance = rInstance.Elem()
+	rDestValue = rDestValue.Elem()
+	if rSrcTyp.Kind() == reflect.Ptr {
+		rSrcValue = rSrcValue.Elem()
+	}
 
 	var rDestField reflect.Value
 	var rSrcField reflect.Value
 	valueZero := reflect.Value{}
-	// kind := rSrcValue.Kind()
-	// if kind == reflect.Ptr {
-	// 	kind = rSrcValue.Elem().Kind()
-	// }
+
+	for i := 0; i < rSrcValue.NumField(); i++ {
+		rSrcField = rSrcValue.Field(i)
+		rDestField = rDestValue.FieldByName(rSrcTyp.Field(i).Name)
+		// not found
+		if rDestField == valueZero {
+			continue
+		}
+		if rSrcField.Type() != rDestField.Type() {
+			continue
+		}
+
+		if !rDestField.CanSet() {
+			//fmt.Println(rDestField, "cannot set")
+			continue
+		}
+		copyEquivalentElement(rDestField, rSrcField)
+	}
+
+}
+
+// copyEquivalentElement 支持结构、切片、以及他们的嵌套、标量拷贝
+func copyEquivalentElement(rDestValue reflect.Value, rSrcValue reflect.Value) {
+	// 过滤不同类型的copy,未产生panic
+	if rDestValue.Type() != rSrcValue.Type() {
+		return
+	}
+
+	var rDestField reflect.Value
+	var rSrcField reflect.Value
+
 	switch rSrcValue.Kind() {
-	case reflect.Struct, reflect.Ptr:
+	case reflect.Struct:
 		for i := 0; i < rSrcValue.NumField(); i++ {
 			rSrcField = rSrcValue.Field(i)
-			//fmt.Println(name, rSrcField.Interface())
-			rDestField = rInstance.FieldByName(rSrcTyp.Field(i).Name)
-			if rDestField == valueZero {
-				continue
-			}
-			if rSrcField.Type() != rDestField.Type() {
-				//fmt.Println("type not same")
-				continue
-			}
-			if rDestField.Kind() == reflect.Ptr {
-				rSrcField = rSrcField.Elem()
-			}
+			rDestField = rDestValue.Field(i)
+			// struct field not support pointer now
 			if rDestField.Kind() == reflect.Struct ||
 				rDestField.Kind() == reflect.Slice ||
 				rDestField.Kind() == reflect.Array {
-				if !rDestField.CanAddr() {
-					continue
-				}
-				copyDataToNewStru(rDestField.Addr().Interface(), rSrcField.Interface())
+				copyEquivalentElement(rDestField, rSrcField)
 				return
 			}
 			if !rDestField.CanSet() {
-				//fmt.Println(rDestField, "cannot set")
 				continue
 			}
-
-			copyReflectFieldValue(rDestField, rSrcField)
+			copyEquivalentElement(rDestField, rSrcField)
 		}
 	case reflect.Slice, reflect.Array:
-		//rDestField = rInstance.FieldByName(rSrcTyp.Name())
-		// if rDestField.Type() != rSrcField.Type() {
-		// 	fmt.Println("slice type not same")
-		// 	return
-		// }
-		//rDestField.SetCap(rSrcValue.Cap())
-		//reflect.MakeSlice(rSrcField.Type(), rSrcValue.Len(), rSrcValue.Cap()
-		//fmt.Println(rSrcValue.Len())
-		rDestField = rInstance
+		if rSrcValue.Kind() == reflect.Slice {
+			newVal := reflect.MakeSlice(rDestValue.Type(), rSrcValue.Cap(), rSrcValue.Cap())
+			rDestValue.Set(newVal)
+		}
 		// // copy slice data
 		for i := 0; i < rSrcValue.Len(); i++ {
-			//fmt.Println(rSrcValue.Index(i).Interface())
-			copyReflectFieldValue(rDestField.Index(i), rSrcValue.Index(i))
+			copyEquivalentElement(rDestValue.Index(i), rSrcValue.Index(i))
 		}
+	case reflect.String, reflect.Bool, reflect.Int,
+		reflect.Float32, reflect.Float64:
+		copyReflectFieldValue(rDestValue, rSrcValue)
 	}
 }
 
+// copyReflectFieldValue标准变量值拷贝
 func copyReflectFieldValue(rDestField reflect.Value, rSrcField reflect.Value) {
 	if !rDestField.CanSet() {
 		return

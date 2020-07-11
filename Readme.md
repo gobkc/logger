@@ -11,33 +11,42 @@
 
 > es demo
 
-		rand.Seed(time.Now().Unix())
-		type BookInfo struct {
+	type BookInfo struct {
+			ID     int    `json:"id"`
 			Author string `json:"author"`
 			Sales  int    `json:"sales"`
 		}
 	
 		type Message struct {
+			ID   int      `json:"id"`
 			Name string   `json:"name1"`
 			Age  int      `json:"age"`
 			Book BookInfo `json:"book"`
 		}
 	
+		type Messages struct {
+			ID   int       `json:"id"`
+			Msgs []Message `json:"memgs"`
+		}
+	
 		type Pet struct {
+			ID   int       `json:"id"`
 			Name string    `json:"petName"`
-			Age  int       `json:"petAge"`
+			age  int       `json:"petAge"`
 			Like [3]string `json:"like"`
 		}
 		var logType = driver.ElasticSearch{
-			Host:     "89zx.com",
+			Host:     "hello", //"89zx.com",
 			Port:     9200,
-			User:     "yunlifang",
+			User:     "zou", //"yunlifang",
 			Password: "YlfEs2020",
-			Index:    "test",
 		}
 		logger.Set(logType)
 	
+		id := int(time.Now().Unix())
+	
 		m := Message{
+			ID:   id,
 			Name: "li",
 			Age:  rand.Intn(10000),
 			Book: BookInfo{
@@ -46,18 +55,24 @@
 			},
 		}
 	
-		log.SetPrefix("test").Info(m)
-		// log.SetPrefix("test").Warn(m)
-		// log.SetPrefix("test").Error(m)
-		// log.SetPrefix("test").Danger(m)
-		// log.Warn(m)
-		// log.Info(m)
+		log.SetPrefix("test01").Info(m)
+	
+		id++
 		m1 := Pet{
+			ID:   id,
 			Name: "wangwang",
-			Age:  rand.Intn(10000),
+			age:  rand.Intn(10000),
 			Like: [3]string{"aaa", "bbb", "ddd"},
 		}
-		log.SetPrefix("test").Info(m1)
+		log.SetPrefix("test01").Info(m1)
+		id++
+		m2 := Messages{
+			ID: id,
+			Msgs: []Message{
+				m, m, m,
+			},
+		}
+		log.Danger(m2)
 
 > file demo
 
