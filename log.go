@@ -1,4 +1,4 @@
-package log
+package logger
 
 import (
 	"encoding/json"
@@ -34,7 +34,7 @@ func SetOut(o OutPuter) {
 func SetPrefix(index string) *logOperator {
 	logOprDefault.Index = index
 	if logOprDefault.output == nil {
-		panic("didn't set ouput object")
+		panic("didn't  Set driver")
 	}
 	logOprDefault.output.SetIndex(index)
 	return &logOprDefault
@@ -42,8 +42,8 @@ func SetPrefix(index string) *logOperator {
 
 func createCombinationStru(v interface{}, add interface{}) (t reflect.Type) {
 	fieldSlice := []reflect.StructField{}
-	typ1 := reflect.TypeOf(v)
-	typ2 := reflect.TypeOf(add)
+	typ1 := reflect.TypeOf(v).Elem()
+	typ2 := reflect.TypeOf(add).Elem()
 
 	for i := 0; i < typ1.NumField(); i++ {
 		// discard lowercase field
@@ -68,9 +68,9 @@ func createCombinationStru(v interface{}, add interface{}) (t reflect.Type) {
 
 // copyDataToNewStru copy struct data to a struct
 // dest : 目标结构的指针的接口
-// src  : 源结构的接口
+// src  : 源结构指针的接口
 func copyDataToNewStru(dest interface{}, src interface{}) {
-	rSrcValue := reflect.ValueOf(src)
+	rSrcValue := reflect.ValueOf(src).Elem()
 	rSrcTyp := rSrcValue.Type()
 	rDestValue := reflect.ValueOf(dest)
 
@@ -169,16 +169,22 @@ func copyReflectFieldValue(rDestField reflect.Value, rSrcField reflect.Value) {
 }
 
 func (l *logOperator) out(level string, v interface{}) {
+	rTyp := reflect.TypeOf(v)
+	if rTyp.Kind() != reflect.Ptr ||
+		rTyp.Elem().Kind() != reflect.Struct {
+		panic("log data type is not support")
+		return
+	}
 	var esData = EsHeader{
 		Time:  time.Now().Format("2006-01-02 15:04:05"),
 		Level: level,
 	}
 
 	// create a combination
-	typ := createCombinationStru(v, esData)
+	typ := createCombinationStru(v, &esData)
 	newStInstance := reflect.New(typ)
 	copyDataToNewStru(newStInstance.Interface(), v)
-	copyDataToNewStru(newStInstance.Interface(), esData)
+	copyDataToNewStru(newStInstance.Interface(), &esData)
 
 	// marshal it
 	data, _ := json.Marshal(newStInstance.Elem().Interface())
@@ -226,5 +232,8 @@ func Warn(v interface{}) {
 }
 
 func Println(v interface{}) {
+	if logOprDefault.output == nil {
+		panic("didn't Set driver")
+	}
 	logOprDefault.Println(v)
 }

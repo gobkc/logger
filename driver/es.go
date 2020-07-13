@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const defaultIndex = "defaultIndex"
+
 //es log driver
 type ElasticSearch struct {
 	Host     string
@@ -47,7 +49,12 @@ func (e *ElasticSearch) Write(p []byte) (n int, err error) {
 			return 0, err
 		}
 	}
+
+	if e.index == "" {
+		e.index = defaultIndex
+	}
 	fmt.Println("Write:", string(p))
+
 	//处理basic auth
 	var eType = fmt.Sprintf("%s:%s", e.User, e.Password)
 	var esEncode = base64.StdEncoding.EncodeToString([]byte(eType))
