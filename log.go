@@ -1,42 +1,56 @@
 package logger
 
 import (
+	"bytes"
 	"encoding/json"
-	//"fmt"
-	"log"
+	"fmt"
+	"io"
+	"os"
 	"reflect"
 	"time"
 	"unicode"
 	"unicode/utf8"
 )
 
-var logOprDefault logOperator
+var logOprDefault LogOperator
 
+// OutPuter 具体驱动的接口
 type OutPuter interface {
-	OutPut(p []byte) (n int, err error)
+	Write(p []byte) (n int, err error)
 	SetIndex(index string)
 }
 
+// EsHeader 日志消息头
 type EsHeader struct {
 	Time  string `json:"time"`
 	Level string `json:"level"`
 }
 
-type logOperator struct {
-	Index  string
-	output OutPuter
+// EsDefault 当输入日志不是一个JSON的默认处理方式
+type EsDefault struct {
+	Time    string `json:"time"`
+	Message string `json:"message"`
+	Level   string `json:"level"`
 }
 
+// LogOperator 日志操作器，对外提供接口
+type LogOperator struct {
+	Index    string
+	outputer OutPuter
+}
+
+// SetOut 获得日志驱动的引用
 func SetOut(o OutPuter) {
-	logOprDefault.output = o
+	logOprDefault.outputer = o
 }
 
-func SetPrefix(index string) *logOperator {
+// SetPrefix 设置写的目标，elasticSearch则指数据库
+func SetPrefix(index string) *LogOperator {
 	logOprDefault.Index = index
-	if logOprDefault.output == nil {
+	if logOprDefault.outputer == nil {
 		panic("didn't  Set driver")
 	}
-	logOprDefault.output.SetIndex(index)
+	logOprDefault.outputer.SetIndex(index)
 	return &logOprDefault
 }
 
@@ -168,7 +182,7 @@ func copyReflectFieldValue(rDestField reflect.Value, rSrcField reflect.Value) {
 	}
 }
 
-func (l *logOperator) out(level string, v interface{}) {
+func (l *LogOperator) out(level string, v interface{}) {
 	rTyp := reflect.TypeOf(v)
 	if rTyp.Kind() != reflect.Ptr ||
 		rTyp.Elem().Kind() != reflect.Struct {
@@ -187,53 +201,124 @@ func (l *logOperator) out(level string, v interface{}) {
 	copyDataToNewStru(newStInstance.Interface(), &esData)
 
 	// marshal it
-	data, _ := json.Marshal(newStInstance.Elem().Interface())
-	l.output.OutPut(data)
+	data, err := json.Marshal(newStInstance.Elem().Interface())
+	if err != nil {
+		return
+	}
+
+	l.Write(data)
 }
 
 // Error output info log
-func (l *logOperator) Info(v interface{}) {
+func (l *LogOperator) Info(v interface{}) {
 	l.out("info", v)
 }
 
 // Error output error log
-func (l *logOperator) Error(v interface{}) {
+func (l *LogOperator) Error(v interface{}) {
 	l.out("error", v)
 }
 
 // Danger output danger log
-func (l *logOperator) Danger(v interface{}) {
+func (l *LogOperator) Danger(v interface{}) {
 	l.out("danger", v)
 }
 
 // Warn output warning log
-func (l *logOperator) Warn(v interface{}) {
+func (l *LogOperator) Warn(v interface{}) {
 	l.out("warning", v)
 }
 
-func (l *logOperator) Println(v interface{}) {
-	log.Println(v)
+// Println 取得打印信息作为日志message输出
+func (l *LogOperator) Println(v ...interface{}) {
+	message := fmt.Sprintln(v...)
+	data, err := packEsMessage([]byte(message))
+	if err != nil {
+		return
+	}
+	l.Write(data)
 }
 
+// Print 取得打印信息作为日志message输出
+func (l *LogOperator) Print(v ...interface{}) {
+	message := fmt.Sprint(v...)
+	data, err := packEsMessage([]byte(message))
+	if err != nil {
+		return
+	}
+	l.Write(data)
+}
+
+// Printf 取得打印信息作为日志message输出
+func (l *LogOperator) Printf(format string, v ...interface{}) {
+	message := fmt.Sprintf(format, v...)
+	data, err := packEsMessage([]byte(message))
+	if err != nil {
+		return
+	}
+	l.Write(data)
+}
+
+// Write 向日志记录器输出
+func (l *LogOperator) Write(p []byte) (n int, err error) {
+	// 将数据输出到多个输出目的地
+	reader := bytes.NewReader(p)
+	mutiWriter := io.MultiWriter(l.outputer, os.Stdout)
+	num, err := io.Copy(mutiWriter, reader)
+	return int(num), err
+}
+
+// Info logOperator.Info 的封装
 func Info(v interface{}) {
 	logOprDefault.Info(v)
 }
 
+// Error logOperator.Error 的封装
 func Error(v interface{}) {
 	logOprDefault.Error(v)
 }
 
+// Danger logOperator.Danger 的封装
 func Danger(v interface{}) {
 	logOprDefault.Danger(v)
 }
 
+// Warn logOperator.Warn 的封装
 func Warn(v interface{}) {
 	logOprDefault.Warn(v)
 }
 
-func Println(v interface{}) {
-	if logOprDefault.output == nil {
-		panic("didn't Set driver")
+// Println logOperator.Println 的封装
+func Println(v ...interface{}) {
+	if logOprDefault.outputer == nil {
+		panic("didn't Set output driver")
 	}
-	logOprDefault.Println(v)
+	logOprDefault.Println(v...)
+}
+
+// Print logOperator.Print 的封装
+func Print(v ...interface{}) {
+	if logOprDefault.outputer == nil {
+		panic("didn't Set output driver")
+	}
+	logOprDefault.Print(v...)
+}
+
+// Printf logOperator.Printf 的封装
+func Printf(format string, v ...interface{}) {
+	if logOprDefault.outputer == nil {
+		panic("didn't Set output driver")
+	}
+	logOprDefault.Printf(format, v...)
+}
+
+func packEsMessage(p []byte) (data []byte, err error) {
+	var newParm = EsDefault{
+		Message: string(p),
+		Time:    time.Now().Format("2006-01-02 15:04:05"),
+		Level:   "info",
+	}
+
+	data, err = json.Marshal(newParm)
+	return
 }
