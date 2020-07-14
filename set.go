@@ -11,8 +11,6 @@ func Set(logType interface{}) {
 	switch t {
 	case "driver.ElasticSearch":
 		var to = logType.(driver.ElasticSearch)
-		log.SetFlags(0)
-		log.SetOutput(&to)
 		SetOut(&to)
 	case "driver.Syslog":
 		var to = logType.(driver.Syslog)
