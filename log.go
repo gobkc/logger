@@ -156,7 +156,9 @@ func copyEquivalentElement(rDestValue reflect.Value, rSrcValue reflect.Value) {
 		for i := 0; i < rSrcValue.Len(); i++ {
 			copyEquivalentElement(rDestValue.Index(i), rSrcValue.Index(i))
 		}
-	case reflect.String, reflect.Bool, reflect.Int,
+	case reflect.String, reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
 		reflect.Float32, reflect.Float64:
 		copyReflectFieldValue(rDestValue, rSrcValue)
 	}
@@ -167,17 +169,45 @@ func copyReflectFieldValue(rDestField reflect.Value, rSrcField reflect.Value) {
 	if !rDestField.CanSet() {
 		return
 	}
-	switch rDestField.Kind() {
-	case reflect.String:
-		rDestField.SetString(rSrcField.Interface().(string))
-	case reflect.Bool:
-		rDestField.SetBool(rSrcField.Interface().(bool))
-	case reflect.Int:
-		rDestField.SetInt(int64(rSrcField.Interface().(int)))
-	case reflect.Float32:
-		rDestField.SetFloat(float64(rSrcField.Interface().(float32)))
-	case reflect.Float64:
-		rDestField.SetFloat(float64(rSrcField.Interface().(float64)))
+	fmt.Println("copyReflectFieldValue", rSrcField.Interface())
+	srcValue := rSrcField.Interface()
+	switch v := srcValue.(type) {
+	case string:
+		rDestField.SetString(v)
+	case bool:
+		rDestField.SetBool(v)
+	case int, int8, int16, int32, int64:
+		if itsValue, ok := v.(int); ok {
+			rDestField.SetInt(int64(itsValue))
+		} else if itsValue, ok := v.(int8); ok {
+			rDestField.SetInt(int64(itsValue))
+		} else if itsValue, ok := v.(int16); ok {
+			rDestField.SetInt(int64(itsValue))
+		} else if itsValue, ok := v.(int32); ok {
+			rDestField.SetInt(int64(itsValue))
+		} else if itsValue, ok := v.(int64); ok {
+			rDestField.SetInt(int64(itsValue))
+		}
+	case uint, uint8, uint16, uint32, uint64, uintptr:
+		if itsValue, ok := v.(uint); ok {
+			rDestField.SetUint(uint64(itsValue))
+		} else if itsValue, ok := v.(uint8); ok {
+			rDestField.SetUint(uint64(itsValue))
+		} else if itsValue, ok := v.(uint16); ok {
+			rDestField.SetUint(uint64(itsValue))
+		} else if itsValue, ok := v.(uint32); ok {
+			rDestField.SetUint(uint64(itsValue))
+		} else if itsValue, ok := v.(uint64); ok {
+			rDestField.SetUint(uint64(itsValue))
+		} else if itsValue, ok := v.(uintptr); ok {
+			rDestField.SetUint(uint64(itsValue))
+		}
+	case float32, float64:
+		if itsValue, ok := v.(uintptr); ok {
+			rDestField.SetFloat(float64(itsValue))
+		} else if itsValue, ok := v.(uintptr); ok {
+			rDestField.SetFloat(float64(itsValue))
+		}
 		// 其他还未支持
 	}
 }
