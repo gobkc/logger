@@ -35,10 +35,12 @@ func TestDemo01(t *testing.T) {
 		Like [3]string `json:"like"`
 	}
 	var logType = driver.ElasticSearch{
-		Host:     "89zx.com",
-		Port:     9200,
-		User:     "yunlifang",
-		Password: "YlfEs2020",
+		Common: &driver.ElasticSearchCommon{
+			Host:     "89zx.com",
+			Port:     9200,
+			User:     "yunlifang",
+			Password: "YlfEs2020",
+		},
 	}
 
 	id := int(time.Now().Unix())
@@ -54,7 +56,9 @@ func TestDemo01(t *testing.T) {
 	}
 
 	Set(logType)
-	SetPrefix("test01").Info(&m) //嵌套结构体
+	//嵌套结构体
+	handle := GetLogHandle("test01")
+	handle.Info(&m)
 	id++
 	m1 := Pet{
 		ID:   id,
@@ -62,7 +66,7 @@ func TestDemo01(t *testing.T) {
 		age:  rand.Intn(10000),
 		Like: [3]string{"aaa", "bbb", "ddd"},
 	}
-	SetPrefix("test01").Warn(&m1) //嵌套切片
+	handle.Warn(&m1) //嵌套切片
 	id++
 	m2 := Messages{
 		ID:   id,
@@ -72,7 +76,7 @@ func TestDemo01(t *testing.T) {
 		},
 	}
 
-	Danger(&m2) //嵌套切片结构
+	handle.Danger(&m2) //嵌套切片结构
 	id++
 	m3 := Pet{
 		ID:   id,
@@ -80,22 +84,6 @@ func TestDemo01(t *testing.T) {
 		age:  rand.Intn(10000),
 		Like: [3]string{"aaa", "bbb", "ddd"},
 	}
-	SetPrefix("test01").Error(&m3)
-
-	m4 := Pet{
-		ID:   id,
-		Name: "logFunc",
-		age:  rand.Intn(10000),
-		Like: [3]string{"aaa", "bbb", "ddd"},
-	}
-	Info(&m4)
-	m4.ID++
-	Warn(&m4)
-	m4.ID++
-	Error(&m4)
-	m4.ID++
-	Danger(&m4)
-
-	s := "hello"
-	Println(s)
+	handle.Error(&m3)
+	handle.Print("you are login in")
 }

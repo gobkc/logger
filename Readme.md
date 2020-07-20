@@ -9,8 +9,27 @@
 - MYSQL     no
 - MONGO     no
 
+
+
+logger接口
+
+```
+type Logger interface {
+	Info(struPtr interface{})
+	Warn(struPtr interface{})
+	Error(struPtr interface{})
+	Danger(struPtr interface{})
+	Println(v ...interface{})
+	Printf(format string, v ...interface{})
+	Print(v ...interface{})
+}
+```
+
+
+
 > es demo
 
+		rand.Seed(time.Now().Unix())
 		type BookInfo struct {
 			ID     int    `json:"id"`
 			Author string `json:"author"`
@@ -26,6 +45,7 @@
 	
 		type Messages struct {
 			ID   int       `json:"id"`
+			Name string    `json:"name1"`
 			Msgs []Message `json:"memgs"`
 		}
 	
@@ -36,17 +56,19 @@
 			Like [3]string `json:"like"`
 		}
 		var logType = driver.ElasticSearch{
-			Host:     "hello", //"89zx.com",
-			Port:     9200,
-			User:     "zou", //"yunlifang",
-			Password: "YlfEs2020",
+			Common: &driver.ElasticSearchCommon{
+				Host:     "89zx.com",
+				Port:     9200,
+				User:     "yunlifang",
+				Password: "YlfEs2020",
+			},
 		}
 	
 		id := int(time.Now().Unix())
 	
 		m := Message{
 			ID:   id,
-			Name: "li",
+			Name: "logSelect",
 			Age:  rand.Intn(10000),
 			Book: BookInfo{
 				Author: "name 2",
@@ -54,29 +76,29 @@
 			},
 		}
 	
-		logger.Set(logType)
-		logger.Println("hello")
-		logger.SetPrefix("test01").Info(&m)
-	
+		Set(logType)
+		//嵌套结构体
+		handle := GetLogHandle("test01")
+		handle.Info(&m)
 		id++
 		m1 := Pet{
 			ID:   id,
-			Name: "wangwang",
+			Name: "logSelect",
 			age:  rand.Intn(10000),
 			Like: [3]string{"aaa", "bbb", "ddd"},
 		}
-		logger.SetPrefix("test01").Info(&m1)
+		handle.Warn(&m1) //嵌套切片
 		id++
 		m2 := Messages{
-			ID: id,
+			ID:   id,
+			Name: "logselect",
 			Msgs: []Message{
 				m, m, m,
 			},
 		}
-		logger.Danger(&m2)
-		s := "hello"
-		logger.Println(s)
 	
+	
+
 
 > file demo
 
@@ -111,21 +133,24 @@
       logger.Set(logType)
 ```
 
-第二步，设置prefix
+第二步，获得日志器操作句柄或者logger
 
 如果输出是elasticsearch, 则设置的是对应数据库，未做此步骤时，默认的数据库为defaultIndex；如果是文件则代表对应文件,
 
 ```
-logger.SetPrefix("test01")
+handle := GetLogHandle("test01")
 ```
 
 第三步，日志输出
 
 ```
-#方式1，通过设置prefix返回的引用调用日志记录方法,此时传入的信息格式为结构体的指针
-logger.SetPrefix("test01").Info(&m)
-#方式2.调用logger包函数print,传入数据为字符串，作为单信息message输出
-logger.Println("hello")
-logger.Print("hi")
+ m1 := Pet{
+		ID:   id,
+		Name: "logSelect",
+		age:  rand.Intn(10000),
+		Like: [3]string{"aaa", "bbb", "ddd"},
+	}
+	handle.Warn(&m1) //嵌套切片
+handle.Println("hello")
 ```
 
