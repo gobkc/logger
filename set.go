@@ -6,12 +6,13 @@ import (
 	"log"
 )
 
+// Set select a log driver, and set loginfo
 func Set(logType interface{}) {
 	t := fmt.Sprintf("%T", logType)
 	switch t {
 	case "driver.ElasticSearch":
 		var to = logType.(driver.ElasticSearch)
-		SetOut(&to)
+		setLogType(&to)
 	case "driver.Syslog":
 		var to = logType.(driver.Syslog)
 		log.SetFlags(0)
