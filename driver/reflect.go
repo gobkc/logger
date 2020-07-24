@@ -7,13 +7,6 @@ import (
 )
 
 func createCombinationStru(v interface{}, add interface{}) (t reflect.Value) {
-	rTyp := reflect.TypeOf(v)
-	if rTyp.Kind() != reflect.Ptr ||
-		rTyp.Elem().Kind() != reflect.Struct {
-		panic("log data type is not support")
-		return
-	}
-
 	fieldSlice := []reflect.StructField{}
 	typ1 := reflect.TypeOf(v).Elem()
 	typ2 := reflect.TypeOf(add).Elem()

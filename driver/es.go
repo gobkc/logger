@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"reflect"
 	"time"
 )
 
@@ -43,6 +44,12 @@ type EsHeader struct {
 }
 
 func (e *ElasticSearch) out(level string, v interface{}) {
+	rTyp := reflect.TypeOf(v)
+	if rTyp.Kind() != reflect.Ptr ||
+		rTyp.Elem().Kind() != reflect.Struct {
+		// panic("output data type is not support")
+		return
+	}
 	var esData = EsHeader{
 		Time:  time.Now().Format("2006-01-02 15:04:05"),
 		Level: level,
